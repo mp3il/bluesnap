@@ -190,34 +190,28 @@ class PaymentFieldsTokenResource(Resource):
 
     def __init__(
         self,
-        shopperID: str = None
     ):
-        self._tokenId = None
-        self.shopperID = shopperID
         super(PaymentFieldsTokenResource, self).__init__()
 
-    def create(self):
+    def create(
+            self,
+            shopperId: str = None
+    ):
         '''
         Create a Hosted Payment Fields token by sending a server-to-server POST request to BlueSnap
         :return:
         '''
-        # noinspection PyPep8Naming
-        E = self.client.E
 
-        if self.shopperID is not None:
-            _url = '%s/%s' % (self.path, self.shopperID)
+        if shopperId is not None:
+            _url = '%s?shopperId=%s' % (self.path, shopperId)
         else:
             _url = self.path
 
         response, body = self.request('POST', _url)
 
         locationHeader = response.headers['Location']
-        self._tokenId = locationHeader.split('/')[-1]
-        return self._tokenId
-
-    def tokenId(self):
-        return self._tokenId
-
+        tokenId = locationHeader.split('/')[-1]
+        return tokenId
 
 class DictableObject:
 
@@ -277,8 +271,7 @@ class ShippingContactInfo(DictableObject):
         super(ShippingContactInfo, self).__init__()
 
         if not firstName or not lastName or not address1 or not city or not zip or not country:
-            raise ValueError('firstName, lastName, address1, city, zip and country are '
-                             'required are required.')
+            raise ValueError('firstName, lastName, address1, city, zip and country are required.')
 
         self.firstName = firstName
         self.lastName = lastName
@@ -441,10 +434,23 @@ class BillingContactInfo(DictableObject):
         # Call base class init
         super(BillingContactInfo, self).__init__()
 
-        if not firstName or not lastName or not address1 or not city or not zip or not country or \
-                not personalIdentificationNumber:
-            raise ValueError('firstName, lastName, address1, city, zip, country and personalIdentificationNumber are '
-                             'required are required.')
+        if not firstName or not lastName or not address1 or not city or not zip or not country:
+            raise ValueError('firstName, lastName, address1, city, zip and country '
+                             'are required.')
+
+        # In one of the countries that required a personal identification number?
+        # https://developers.bluesnap.com/v8976-JSON/docs/billing-contact-info
+        if country.lower() in {
+            'ar', # Argentina
+            'br', # Brazil
+            'cl', # Chile
+            'co', # Colombia
+            'mx', # Mexico
+            'il', # Israel
+        }:
+            if not personalIdentificationNumber:
+                raise ValueError('personalIdentificationNumber is required for country %s.' % country)
+
 
         self.firstName = firstName
         self.lastName = lastName
@@ -464,7 +470,6 @@ class BillingContactInfo(DictableObject):
             "city": self.city,
             "zip": self.zip,
             "country": self.country,
-            "personalIdentificationNumber": self.personalIdentificationNumber,
         }
 
         self._setToDictIfHasValues(
@@ -472,6 +477,7 @@ class BillingContactInfo(DictableObject):
             keys=[
                 "address2",
                 "state",
+                "personalIdentificationNumber",
             ]
         )
 
@@ -743,7 +749,6 @@ class Level3DataItem(DictableObject):
 
         return result
 
-
 class Level3Data(DictableObject):
     '''
     Contains Level 2/3 data properties for the transaction
@@ -814,6 +819,72 @@ class Level3Data(DictableObject):
 
         return result
 
+class NetworkTransactionInfo(DictableObject):
+    '''
+    Contains the network transaction information for this transaction
+    https://developers.bluesnap.com/v8976-JSON/docs/network-transaction-info
+    '''
+
+    def __init__(
+            self,
+            originalNetworkTransactionId: str = None,
+    ):
+        '''
+
+        :param originalNetworkTransactionId: If this transaction is linked to an a previous network transaction ID,
+            that NTI is sent here.
+        '''
+
+        # Call base class init
+        super(NetworkTransactionInfo, self).__init__()
+
+        self.originalNetworkTransactionId = originalNetworkTransactionId
+
+    def toDict(self) -> dict:
+        result = {
+        }
+
+        self._setToDictIfHasValues(
+            resultDict=result,
+            keys=[
+                "originalNetworkTransactionId",
+            ]
+        )
+
+        return result
+
+class ThreeDSecure(DictableObject):
+    '''
+    Contains 3D Secure details for this transaction
+    https://developers.bluesnap.com/v8976-JSON/docs/threedsecure
+    '''
+
+    def __init__(
+            self,
+            threeDSecureReferenceId: str = None,
+    ):
+        '''
+
+        :param threeDSecureReferenceId: 3-D Secure reference ID received from client
+        '''
+
+        # Call base class init
+        super(ThreeDSecure, self).__init__()
+
+        self.threeDSecureReferenceId = threeDSecureReferenceId
+
+    def toDict(self) -> dict:
+        result = {
+        }
+
+        self._setToDictIfHasValues(
+            resultDict=result,
+            keys=[
+                "threeDSecureReferenceId",
+            ]
+        )
+
+        return result
 
 class CreditCard(DictableObject):
     '''
@@ -923,13 +994,10 @@ class CreditCardInfo(DictableObject):
         return result
 
 
-
-
 class VaultedShopperResource(Resource):
     path = '/services/2/vaulted-shoppers'
 
     def __init__(self):
-        self._tokenId = None
         super(VaultedShopperResource, self).__init__()
 
     def retrieve(self, vaultedShopperId: str) -> dict:
@@ -1103,17 +1171,18 @@ class TransactionResource(Resource):
             self,
             amount: str,
             currency: str,
-
+            transactionInitiator: str = "SHOPPER",
             vaultedShopperId: str = None,
             creditCard: CreditCard = None,
             pfToken: str = None,
             cardHolderInfo: CardHolderInfo = None,
-
             merchantTransactionId: str = None,
             softDescriptor: str = None,
             descriptorPhoneNumber: str = None,
             level3Data: Level3Data = None,
-
+            networkTransactionInfo: NetworkTransactionInfo = None,
+            threeDSecure: ThreeDSecure = None,
+            transactionOrderSource: str = None,
             transactionMetadataObjectList: list = ()
     ) -> dict:
         '''
@@ -1127,6 +1196,7 @@ class TransactionResource(Resource):
 
         :param amount:
         :param currency:
+        :param transactionInitiator:
         :param vaultedShopperId:
         :param creditCard: Use this to select the credit card of the vaulted shopper.
         :param pfToken: Hosted Payment Fields token.
@@ -1137,6 +1207,9 @@ class TransactionResource(Resource):
         :param descriptorPhoneNumber: Merchant's support phone number that will appear on the shopper's credit card
             statement. Maximum 20 characters. Overrides merchant default value.
         :param level3Data: Contains Level 2/3 data properties for the transaction
+        :param networkTransactionInfo: Contains the network transaction information for this transaction
+        :param threeDSecure: Contains 3D Secure details for this transaction
+        :param transactionOrderSource: Identifies the order type. The only option is MOTO (Mail Order Telephone Order).
         :param transactionMetadataObjectList:
         :return:
         '''
@@ -1145,6 +1218,7 @@ class TransactionResource(Resource):
             cardTransactionType="AUTH_CAPTURE",
             amount=amount,
             currency=currency,
+            transactionInitiator=transactionInitiator,
             vaultedShopperId=vaultedShopperId,
             creditCard=creditCard,
             pfToken=pfToken,
@@ -1153,6 +1227,9 @@ class TransactionResource(Resource):
             softDescriptor=softDescriptor,
             descriptorPhoneNumber=descriptorPhoneNumber,
             level3Data=level3Data,
+            networkTransactionInfo=networkTransactionInfo,
+            threeDSecure=threeDSecure,
+            transactionOrderSource=transactionOrderSource,
             transactionMetadataObjectList=transactionMetadataObjectList
         )
 
@@ -1174,11 +1251,15 @@ class TransactionResource(Resource):
             self,
             amount: str,
             currency: str,
+            transactionInitiator: str = "SHOPPER",
             vaultedShopperId: str = None,
             creditCard: CreditCard = None,
             pfToken: str = None,
             cardHolderInfo: CardHolderInfo = None,
             transactionFraudInfo: TransactionFraudInfo = None,
+            networkTransactionInfo: NetworkTransactionInfo = None,
+            threeDSecure: ThreeDSecure = None,
+            transactionOrderSource: str = None,
     ) -> dict:
         '''
         Auth Only is a request to check whether a credit card is valid and has the funds to complete a specific
@@ -1195,11 +1276,15 @@ class TransactionResource(Resource):
 
         :param amount:
         :param currency:
+        :param transactionInitiator:
         :param vaultedShopperId:
         :param creditCard: Use this to select the credit card of the vaulted shopper.
         :param pfToken: Hosted Payment Fields token.
         :param cardHolderInfo: Required if supplying a pfToken.
         :param transactionFraudInfo:
+        :param networkTransactionInfo: Contains the network transaction information for this transaction
+        :param threeDSecure: Contains 3D Secure details for this transaction
+        :param transactionOrderSource: Identifies the order type. The only option is MOTO (Mail Order Telephone Order).
         :return:
         '''
 
@@ -1207,16 +1292,21 @@ class TransactionResource(Resource):
             cardTransactionType="AUTH_ONLY",
             amount=amount,
             currency=currency,
+            transactionInitiator=transactionInitiator,
             vaultedShopperId=vaultedShopperId,
             creditCard=creditCard,
             pfToken=pfToken,
             cardHolderInfo=cardHolderInfo,
             transactionFraudInfo=transactionFraudInfo,
+            threeDSecure=threeDSecure,
+            transactionOrderSource=transactionOrderSource,
+            networkTransactionInfo=networkTransactionInfo,
         )
 
     def _executeTransaction(
             self,
             cardTransactionType: str,
+            transactionInitiator: str,
             amount: str,
             currency: str,
             vaultedShopperId: str = None,
@@ -1228,12 +1318,18 @@ class TransactionResource(Resource):
             softDescriptor: str = None,
             descriptorPhoneNumber: str = None,
             level3Data: Level3Data = None,
+            networkTransactionInfo: NetworkTransactionInfo = None,
+            threeDSecure: ThreeDSecure = None,
+            transactionOrderSource: str = None,
             transactionMetadataObjectList: list = (),
     ) -> dict:
         '''
         Internal, perform an auth/capture operation.
 
         :param cardTransactionType:
+        :param transactionInitiator: Identifies who initiated the order. Options are:
+            MERCHANT (for MIT)
+            SHOPPER (for CIT)
         :param amount:
         :param currency:
         :param vaultedShopperId:
@@ -1245,7 +1341,11 @@ class TransactionResource(Resource):
         :param softDescriptor:
         :param descriptorPhoneNumber:
         :param level3Data:
+        :param networkTransactionInfo: Contains the network transaction information for this transaction
+        :param threeDSecure: Contains 3D Secure details for this transaction
+        :param transactionOrderSource: Identifies the order type. The only option is MOTO (Mail Order Telephone Order).
         :param transactionMetadataObjectList:
+
         :return:
         '''
 
@@ -1253,10 +1353,19 @@ class TransactionResource(Resource):
             "amount": amount,
             "currency": currency,
             "cardTransactionType": cardTransactionType,
+            "transactionInitiator": transactionInitiator,
         }
 
         if not pfToken and not vaultedShopperId:
             raise RuntimeError("Must supply either vaultedShopperId or pfToken.")
+
+        if not transactionInitiator in { "SHOPPER", "MERCHANT" }:
+            raise RuntimeError("transactionInitiator must be SHOPPER or MERCHANT.")
+
+        if transactionOrderSource:
+            if not transactionOrderSource == "MOTO":
+                raise RuntimeError("transactionOrderSource must be of the value MOTO or null.")
+            data["transactionOrderSource"] = transactionOrderSource
 
         if vaultedShopperId:
             pfToken = None
@@ -1287,6 +1396,12 @@ class TransactionResource(Resource):
 
         if level3Data:
             data['level3Data'] = level3Data.toDict()
+
+        if networkTransactionInfo:
+            data['networkTransactionInfo'] = networkTransactionInfo.toDict()
+
+        if threeDSecure:
+            data['threeDSecure'] = threeDSecure.toDict()
 
         transactionMetaData = []
         for currentMetadataObject in transactionMetadataObjectList:
