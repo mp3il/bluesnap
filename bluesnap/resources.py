@@ -213,6 +213,39 @@ class PaymentFieldsTokenResource(Resource):
         tokenId = locationHeader.split('/')[-1]
         return tokenId
 
+class SubscriptionResource(Resource):
+    '''
+    '''
+    path = '/services/2/recurring/subscriptions'
+
+    def __init__(
+        self,
+    ):
+        super(SubscriptionResource, self).__init__()
+
+    def create(
+            self,
+            planId: str,
+            pfToken: str
+    ) -> dict:
+        '''
+        Create a new Subscription using pfToken
+        :return:
+        '''
+    
+        data = {
+            "planId": self.planId,
+            "paymentSource": {
+                "pfToken": self.pfToken
+            }
+        }
+
+        response, body = self.request('POST', self.path, data=data)
+
+        return dict(response)
+
+
+
 class DictableObject:
 
     def __init__(self):
