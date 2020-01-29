@@ -22,7 +22,7 @@ setup(
     version=__version__,
     author='Alon Diamant',
     author_email='alon@mayple.com',
-    url='https://github.com/mayple/bluesnap',
+    url='https://github.com/mp3il/bluesnap/',
     license='LICENSE',
     description='A Python 3 module to interact with the Bluesnap API.',
     long_description=long_description,
