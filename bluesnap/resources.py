@@ -234,9 +234,9 @@ class SubscriptionResource(Resource):
         '''
     
         data = {
-            "planId": self.planId,
+            "planId": planId,
             "paymentSource": {
-                "pfToken": self.pfToken
+                "pfToken": pfToken
             }
         }
 
