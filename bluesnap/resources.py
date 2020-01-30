@@ -241,7 +241,8 @@ class SubscriptionResource(Resource):
                 "pfToken": token
             }
         }
-        print(body)
+        print("Sending:")
+        print(data)
 
         response, body = self.request('POST', self.path, data=data)
 
