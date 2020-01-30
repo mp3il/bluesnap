@@ -226,7 +226,8 @@ class SubscriptionResource(Resource):
     def create(
             self,
             planId: str,
-            shopperId: str
+            shopperId: str,
+            token: str
     ) -> dict:
         '''
         Create a new Subscription using pfToken
@@ -235,8 +236,12 @@ class SubscriptionResource(Resource):
     
         data = {
             "planId": planId,
-            "vaulted-shopper-id": shopperId
+            "vaulted-shopper-id": shopperId,
+            "paymentSources": {
+                "pfToken": token
+            }
         }
+        print(body)
 
         response, body = self.request('POST', self.path, data=data)
 
