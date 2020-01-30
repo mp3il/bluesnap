@@ -235,7 +235,7 @@ class SubscriptionResource(Resource):
     
         data = {
             "planId": planId,
-            "vaulted-shopper-id": self.shopperId
+            "vaulted-shopper-id": shopperId
         }
 
         response, body = self.request('POST', self.path, data=data)
