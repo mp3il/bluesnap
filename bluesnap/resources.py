@@ -236,7 +236,7 @@ class SubscriptionResource(Resource):
     
         data = {
             "planId": planId,
-            "vaulted-shopper-id": shopperId,
+            "vaultedShopperId": shopperId,
             "paymentSources": {
                 "creditCardInfo": {
                     "creditCard": cc
