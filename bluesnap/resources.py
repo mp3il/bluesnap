@@ -243,13 +243,13 @@ class SubscriptionResource(Resource):
                 }
             }
         }
-        print("Sending:")
-        print(data)
+        #print("Sending:")
+        #print(data)
 
         response, body = self.request('POST', self.path, data=data)
-        print("Response is: ", response)
-        print("Body is: ", body)
-        return response
+        #print("Response is: ", response)
+        #print("Body is: ", body)
+        return body
 
 
 
