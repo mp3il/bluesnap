@@ -247,8 +247,9 @@ class SubscriptionResource(Resource):
         print(data)
 
         response, body = self.request('POST', self.path, data=data)
-
-        return dict(response)
+        print("Response is: ", response)
+        print("Body is: ", body)
+        return response
 
 
 
