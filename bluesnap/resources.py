@@ -227,7 +227,7 @@ class SubscriptionResource(Resource):
             self,
             planId: str,
             shopperId: str,
-            token: str
+            cc: dict
     ) -> dict:
         '''
         Create a new Subscription using pfToken
@@ -238,7 +238,9 @@ class SubscriptionResource(Resource):
             "planId": planId,
             "vaulted-shopper-id": shopperId,
             "paymentSources": {
-                "pfToken": token
+                "creditCardInfo": {
+                    "creditCard": cc
+                }
             }
         }
         print("Sending:")
