@@ -223,6 +223,21 @@ class SubscriptionResource(Resource):
     ):
         super(SubscriptionResource, self).__init__()
 
+
+
+    def retrieve(self, subscriptionId: str) -> dict:
+        '''
+        The Retrieve Subscription request retrieves all the saved details for the subscription id provided.
+
+
+        :param subscriptionId:
+        :return:
+        '''
+
+        response, body = self.request('GET', '%s/%s' % (self.path, subscriptionId))
+
+        return dict(body)        
+
     def create(
             self,
             planId: str,
